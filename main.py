@@ -1,4 +1,20 @@
+import requests
+import plrs
+
+
 class Repo:
+    """Repo is an object that represents a github repo
+
+    Contruct:
+
+        # From the username and project name
+        repo = Repo("username", "project_name")
+
+        # From the repo's url
+        repo = Repo.repo_from_url("https://github.com/username/project_name")
+
+    """
+
     base_github_url = "https://github.com"
     base_raw_url = "https://raw.githubusercontent.com"
 
@@ -18,13 +34,15 @@ class Repo:
         _, _, username, project_name = [x for x in url.split("/") if x != ""]
         return Repo(username, project_name)
 
+    def get_readme_contents(self):
+        return requests.get(self.get_readme_url()).text
+
     def __repr__(self):
         return f"{self.username}/{self.project_name}"
 
 
 if __name__ == "__main__":
     repo = Repo.repo_from_url("https://github.com/JakeRoggenbuck/jai")
-    print(repo)
 
-    print(repo.get_github_url())
-    print(repo.get_readme_url())
+    contents = repo.get_readme_contents()
+    print(contents)
