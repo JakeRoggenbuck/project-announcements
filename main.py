@@ -1,5 +1,6 @@
 import requests
 from plrs import Lexer, EMPTY_TOKEN, Settings, Tokens
+from typing import List, Union
 
 
 class Repo:
@@ -13,6 +14,8 @@ class Repo:
         # From the repo's url
         repo = Repo.repo_from_url("https://github.com/username/project_name")
 
+        announcements = repo.get_announcements()
+
     """
 
     base_github_url = "https://github.com"
@@ -22,10 +25,10 @@ class Repo:
         self.username = username
         self.project_name = project_name
 
-    def get_github_url(self):
+    def get_github_url(self) -> str:
         return f"{self.base_github_url}/{self.username}/{self.project_name}"
 
-    def get_readme_url(self):
+    def get_announcements_url(self) -> str:
         return f"{self.base_raw_url}/{self.username}/{self.project_name}/main/announcements.json"
 
     @staticmethod
@@ -34,45 +37,8 @@ class Repo:
         _, _, username, project_name = [x for x in url.split("/") if x != ""]
         return Repo(username, project_name)
 
-    def get_readme_contents(self):
-        return requests.get(self.get_readme_url()).text
+    def get_announcements(self) -> List[Union[str, None]]:
+        return requests.get(self.get_announcements_url()).json()
 
-    def parse(self):
-        announcements = []
-
-        current_token = EMPTY_TOKEN
-        current_announcement = ""
-        lexer = Lexer(self.get_readme_contents(), Settings.NONE)
-
-        in_announcements = False
-        while current_token.token != Lexer.EOF:
-            current_token = lexer.next()
-
-            if current_token.token == Tokens.Identifier.value:
-                if current_token.part == "end_announcements":
-                    announcements.append(current_announcement)
-                    current_announcement = ""
-                    return announcements
-
-            if in_announcements:
-                if current_token.part == "-":
-                    announcements.append(current_announcement)
-                    current_announcement = ""
-                else:
-                    current_announcement += current_token.part + (
-                        " " if current_token.token == Tokens.Identifier.value else ""
-                    )
-
-            if current_token.token == Tokens.Identifier.value:
-                if current_token.part == "Announcements":
-                    in_announcements = True
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.username}/{self.project_name}"
-
-
-if __name__ == "__main__":
-    repo = Repo.repo_from_url("https://github.com/JakeRoggenbuck/stow-squid")
-
-    announcements = repo.parse()
-    print(announcements)
