@@ -1,5 +1,5 @@
 import requests
-import plrs
+from plrs import Lexer, EMPTY_TOKEN, Settings, Tokens
 
 
 class Repo:
@@ -26,7 +26,7 @@ class Repo:
         return f"{self.base_github_url}/{self.username}/{self.project_name}"
 
     def get_readme_url(self):
-        return f"{self.base_raw_url}/{self.username}/{self.project_name}/main/README.md"
+        return f"{self.base_raw_url}/{self.username}/{self.project_name}/main/announcements.json"
 
     @staticmethod
     def repo_from_url(url: str):
@@ -37,12 +37,42 @@ class Repo:
     def get_readme_contents(self):
         return requests.get(self.get_readme_url()).text
 
+    def parse(self):
+        announcements = []
+
+        current_token = EMPTY_TOKEN
+        current_announcement = ""
+        lexer = Lexer(self.get_readme_contents(), Settings.NONE)
+
+        in_announcements = False
+        while current_token.token != Lexer.EOF:
+            current_token = lexer.next()
+
+            if current_token.token == Tokens.Identifier.value:
+                if current_token.part == "end_announcements":
+                    announcements.append(current_announcement)
+                    current_announcement = ""
+                    return announcements
+
+            if in_announcements:
+                if current_token.part == "-":
+                    announcements.append(current_announcement)
+                    current_announcement = ""
+                else:
+                    current_announcement += current_token.part + (
+                        " " if current_token.token == Tokens.Identifier.value else ""
+                    )
+
+            if current_token.token == Tokens.Identifier.value:
+                if current_token.part == "Announcements":
+                    in_announcements = True
+
     def __repr__(self):
         return f"{self.username}/{self.project_name}"
 
 
 if __name__ == "__main__":
-    repo = Repo.repo_from_url("https://github.com/JakeRoggenbuck/jai")
+    repo = Repo.repo_from_url("https://github.com/JakeRoggenbuck/stow-squid")
 
-    contents = repo.get_readme_contents()
-    print(contents)
+    announcements = repo.parse()
+    print(announcements)
